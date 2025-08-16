@@ -23,7 +23,7 @@ const mcpClient = new MultiServerMCPClient({
   // Server configuration
   mcpServers: {
     // adds a STDIO connection to a server named "weather"
-    weather: {
+    "dnd-inventory-manager-mcp": {
       transport: "stdio",
       command: "node",
       args: ['/Users/michaelhofer/workspace/projects/inventory-manager/dnd_app_mcp/build/index.js'],
@@ -37,6 +37,8 @@ const mcpClient = new MultiServerMCPClient({
   }
 });
 
+const MCP_TOOLS = await mcpClient.getTools();
+
 // Define the function that calls the model
 async function callModel(
   state: typeof MessagesAnnotation.State,
@@ -44,12 +46,9 @@ async function callModel(
 ): Promise<typeof MessagesAnnotation.Update> {
   /** Call the LLM powering our agent. **/
   const configuration = ensureConfiguration(config);
-
-  // Get tools from MCP client
-  const tools = await mcpClient.getTools();
   
   // Feel free to customize the prompt, model, and other logic!
-  const model = (await loadChatModel(configuration.model)).bindTools(tools);
+  const model = (await loadChatModel(configuration.model)).bindTools(MCP_TOOLS);
 
   const response = await model.invoke([
     {
@@ -80,29 +79,12 @@ function routeModelOutput(state: typeof MessagesAnnotation.State): string {
   }
 }
 
-// Create a custom ToolNode that can access MCP tools
-class MCPToolNode extends ToolNode {
-  constructor() {
-    // Initialize with empty tools, we'll get them dynamically
-    super([]);
-  }
-
-  async invoke(state: any, config?: any) {
-    // Get fresh tools from MCP client each time
-    const tools = await mcpClient.getTools();
-    // Update the tools in the ToolNode
-    (this as any).tools = tools;
-    // Call the parent invoke method
-    return super.invoke(state, config);
-  }
-}
-
 // Define a new graph. We use the prebuilt MessagesAnnotation to define state:
 // https://langchain-ai.github.io/langgraphjs/concepts/low_level/#messagesannotation
 const workflow = new StateGraph(MessagesAnnotation, ConfigurationSchema)
   // Define the two nodes we will cycle between
   .addNode("callModel", callModel)
-  .addNode("tools", new MCPToolNode())
+  .addNode("tools", new ToolNode(MCP_TOOLS))
   // Set the entrypoint as `callModel`
   // This means that this node is the first one called
   .addEdge("__start__", "callModel")
