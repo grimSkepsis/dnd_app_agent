@@ -4,8 +4,7 @@
 import { Annotation } from "@langchain/langgraph";
 import { SYSTEM_PROMPT_TEMPLATE } from "./prompts.js";
 import { RunnableConfig } from "@langchain/core/runnables";
-
-
+import { DEFAULT_MODEL } from "../utils/constants.js";
 
 export const ConfigurationSchema = Annotation.Root({
   /**
@@ -29,6 +28,6 @@ export function ensureConfiguration(
   return {
     systemPromptTemplate:
       configurable.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE,
-    model: configurable.model ?? "claude-3-5-sonnet-20240620",
+    model: configurable.model ?? DEFAULT_MODEL,
   };
 }
