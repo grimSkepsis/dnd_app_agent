@@ -4,10 +4,38 @@ import { MessagesAnnotation, StateGraph } from "@langchain/langgraph";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
 import { ConfigurationSchema, ensureConfiguration } from "./configuration.js";
-import { TOOLS } from "./tools.js";
 import { loadChatModel } from "./utils.js";
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 
+// Create MCP client at module level so it can be shared
+const mcpClient = new MultiServerMCPClient({
+  // Global tool configuration options
+  // Whether to throw on errors if a tool fails to load (optional, default: true)
+  throwOnLoadError: true,
+  // Whether to prefix tool names with the server name (optional, default: false)
+  prefixToolNameWithServerName: false,
+  // Optional additional prefix for tool names (optional, default: "")
+  additionalToolNamePrefix: "",
+
+  // Use standardized content block format in tool outputs
+  useStandardContentBlocks: true,
+
+  // Server configuration
+  mcpServers: {
+    // adds a STDIO connection to a server named "weather"
+    weather: {
+      transport: "stdio",
+      command: "node",
+      args: ['/Users/michaelhofer/workspace/projects/inventory-manager/dnd_app_mcp/build/index.js'],
+      // Restart configuration for stdio transport
+      restart: {
+        enabled: true,
+        maxAttempts: 3,
+        delayMs: 1000,
+      },
+    },
+  }
+});
 
 // Define the function that calls the model
 async function callModel(
@@ -17,35 +45,9 @@ async function callModel(
   /** Call the LLM powering our agent. **/
   const configuration = ensureConfiguration(config);
 
-  const mcpClient = new MultiServerMCPClient({
-     // Global tool configuration options
-    // Whether to throw on errors if a tool fails to load (optional, default: true)
-    throwOnLoadError: true,
-    // Whether to prefix tool names with the server name (optional, default: false)
-    prefixToolNameWithServerName: false,
-    // Optional additional prefix for tool names (optional, default: "")
-    additionalToolNamePrefix: "",
-  
-    // Use standardized content block format in tool outputs
-    useStandardContentBlocks: true,
-  
-    // Server configuration
-    mcpServers: {
-      // adds a STDIO connection to a server named "math"
-      weather: {
-        transport: "stdio",
-        command: "node",
-        args: ['/Users/michaelhofer/workspace/projects/inventory-manager/dnd_app_mcp/build/index.js'],
-        // Restart configuration for stdio transport
-        restart: {
-          enabled: true,
-          maxAttempts: 3,
-          delayMs: 1000,
-        },
-      },
-    }
-  });
+  // Get tools from MCP client
   const tools = await mcpClient.getTools();
+  
   // Feel free to customize the prompt, model, and other logic!
   const model = (await loadChatModel(configuration.model)).bindTools(tools);
 
@@ -78,12 +80,29 @@ function routeModelOutput(state: typeof MessagesAnnotation.State): string {
   }
 }
 
+// Create a custom ToolNode that can access MCP tools
+class MCPToolNode extends ToolNode {
+  constructor() {
+    // Initialize with empty tools, we'll get them dynamically
+    super([]);
+  }
+
+  async invoke(state: any, config?: any) {
+    // Get fresh tools from MCP client each time
+    const tools = await mcpClient.getTools();
+    // Update the tools in the ToolNode
+    (this as any).tools = tools;
+    // Call the parent invoke method
+    return super.invoke(state, config);
+  }
+}
+
 // Define a new graph. We use the prebuilt MessagesAnnotation to define state:
 // https://langchain-ai.github.io/langgraphjs/concepts/low_level/#messagesannotation
 const workflow = new StateGraph(MessagesAnnotation, ConfigurationSchema)
   // Define the two nodes we will cycle between
   .addNode("callModel", callModel)
-  .addNode("tools", new ToolNode(TOOLS))
+  .addNode("tools", new MCPToolNode())
   // Set the entrypoint as `callModel`
   // This means that this node is the first one called
   .addEdge("__start__", "callModel")
