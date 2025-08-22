@@ -1,6 +1,22 @@
-# gitignore template for LangChain products, e.g., LangGraph, LangSmith
-# website: https://www.langchain.com/
-# website: https://www.langchain.com/langgraph
+index.cjs
+index.js
+index.d.ts
+node_modules
+dist
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
 
-# LangGraph
-.langgraph_api/
+.turbo
+**/.turbo
+**/.eslintcache
+
+.env
+.ipynb_checkpoints
+
+
+# LangGraph API
+.langgraph_api
