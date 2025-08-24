@@ -28,13 +28,12 @@ export async function callAssistantAgent(
     const agent = createReactAgent({
         llm: model,
         tools: MCP_TOOLS,
-        prompt: systemPrompt,
       });
 
 
       
   
-    const response = await agent.invoke({});
+    const response = await agent.invoke(systemPrompt);
   
     // We return a list, because this will get added to the existing list
     return { messages: response.messages };
