@@ -6,7 +6,7 @@ import { DEFAULT_MODEL } from "../utils/constants.js";
 import { AssistantConfiguration } from "./schemas/configuration-schema.js";
 
 
-const DEFAULT_ASSISTANT_TEMPLATE_REF = "dnd-assistant-agent";
+const DEFAULT_ASSISTANT_TEMPLATE_REF = "dnd-assistant-agent:goblin";
 
 const DEFAULT_ASSISTANT_MODEL = DEFAULT_MODEL;
 

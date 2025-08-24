@@ -5,8 +5,6 @@ import { loadChatModel } from "../utils.js";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { assistantMCPClient } from "../../utils/mcp.js";
 import * as hub from "langchain/hub";
-
-
 const MCP_TOOLS = await assistantMCPClient.getTools();
 
 
@@ -30,9 +28,6 @@ export async function callAssistantAgent(
         tools: MCP_TOOLS,
       });
 
-
-      
-  
     const response = await agent.invoke(systemPrompt);
   
     // We return a list, because this will get added to the existing list
